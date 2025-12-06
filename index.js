@@ -48,6 +48,11 @@ async function run() {
     app.post('/users', verifyFBToken, async (req, res) => {
       try {
         const  user  = req.body;
+        const userEmail = req.userEmail;
+
+        if(user.email !== userEmail){
+          return res.status(403).send({ message: "Forbidden access" });
+        }
 
         user.role = "user";
         user.wins = 0;
