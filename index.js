@@ -16,6 +16,21 @@ const client = new MongoClient(process.env.MONGO_URI, {
   }
 });
 
+const verifyFBToken = async (req, res, next) => {
+  const token = req.headers.authorization;
+  if(!token){
+    return res.status(401).send({message: "1 unAuthorized access"})
+  }
+  try {
+    const idToken = token.split(' ')[1];
+    const decoded = await admin.auth().verifyIdToken(idToken)
+    req.userEmail = decoded.email,
+    next()
+  } catch (error) {
+    return res.status(401).send({message: "2 unAuthorized access"})
+  }
+}
+
 async function run() {
   try {
     await client.connect();
@@ -23,28 +38,29 @@ async function run() {
     const contestHubDB = client.db('contestHubDB');
     const usersCollection = contestHubDB.collection('users');
 
-    app.post('/users', async (req, res) => {
-        try {
-            const { user } = req.body;
+    app.post('/users', verifyFBToken, async (req, res) => {
+      try {
+        const  user  = req.body;
 
-            user.role = "user";
-            user.wins = 0;
-            user.createdAt = new Date();
+        user.role = "user";
+        user.wins = 0;
+        user.createdAt = new Date();
 
-            const query = { email: user.email };
-            const existingUser = await usersCollection.findOne(query);
-            if (existingUser) {
-                return res.status(409).send({ message: "User already exists!" });
-            }
+        const query = { email: user.email };
+        const existingUser = await usersCollection.findOne(query);
+        if (existingUser) {
+          return res.status(409).send({ message: "User already exists!" });
+        }
 
-            const result = await usersCollection.insertOne(user);
-            res.send({success: true, message: "User saved successfully!", result});
+        const result = await usersCollection.insertOne(user);
+          res.send({success: true, message: "User saved successfully!", result});
         } catch (error) {
-            console.error("DB Error:", error);
-            res.status(500).send({success: false, message: "Something went wrong!", error: error.message  
+          console.error("DB Error:", error);
+          res.status(500).send({success: false, message: "Something went wrong!", error: error.message
         });
-    }
-});
+      }
+    });
+
 
 
     await client.db("admin").command({ ping: 1 });
