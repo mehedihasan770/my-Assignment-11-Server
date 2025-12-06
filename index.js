@@ -1,6 +1,8 @@
 const express = require('express');
 const cors = require('cors')
 const { MongoClient, ServerApiVersion } = require('mongodb');
+const admin = require("firebase-admin");
+const serviceAccount = require("./firebaseKey.json");
 const app = express();
 require('dotenv').config();
 const port = process.env.PORT || 3000;
@@ -15,6 +17,11 @@ const client = new MongoClient(process.env.MONGO_URI, {
     deprecationErrors: true,
   }
 });
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
+
 
 const verifyFBToken = async (req, res, next) => {
   const token = req.headers.authorization;
