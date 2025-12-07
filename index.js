@@ -96,12 +96,32 @@ async function run() {
           return res.status(403).send({ message: "Forbidden Access" });
         }
         const result = await allContests.insertOne(contest);
-        res.json({ success: true, id: result.insertedId });
+        res.send({ success: true, id: result.insertedId });
       } catch (err) {
         console.error(err);
-        res.status(500).json({ success: false, message: err.message });
+        res.status(500).send({ success: false, message: err.message });
       }
     });
+
+    app.get("/contests/:email/creator", verifyFBToken, async (req, res) => {
+      try {
+        const creatorEmail = req.params.email;
+        console.log(creatorEmail)
+
+        if (creatorEmail !== req.userEmail) {
+          return res.status(403).send({ message: "Forbidden Access" });
+        }
+
+        const contests = await allContests
+          .find({ creator_email: creatorEmail })
+          .sort({ created_at: -1 })
+          .toArray();
+          res.send(contests);
+      } catch (err) {
+        res.status(500).send({ message: "Server Error", error: err.message });
+      }
+    });
+
 
 
     await client.db("admin").command({ ping: 1 });
