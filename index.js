@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors')
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const admin = require("firebase-admin");
 const serviceAccount = require("./firebaseKey.json");
 const app = express();
@@ -96,7 +96,7 @@ async function run() {
           return res.status(403).send({ message: "Forbidden Access" });
         }
         const result = await allContests.insertOne(contest);
-        res.send({ success: true, id: result.insertedId });
+        res.send({id: result.insertedId});
       } catch (err) {
         console.error(err);
         res.status(500).send({ success: false, message: err.message });
@@ -112,16 +112,41 @@ async function run() {
           return res.status(403).send({ message: "Forbidden Access" });
         }
 
-        const contests = await allContests
+        const result = await allContests
           .find({ creator_email: creatorEmail })
           .sort({ created_at: -1 })
           .toArray();
-          res.send(contests);
+          res.send(result);
       } catch (err) {
         res.status(500).send({ message: "Server Error", error: err.message });
       }
     });
 
+    app.get("/contests/:id/task", verifyFBToken, async (req, res) => {
+      try {
+        const id = req.params.id;
+
+        const result = await allContests
+          .findOne({ _id: new ObjectId(id) })
+          res.send(result);
+      } catch (err) {
+        res.status(500).send({ message: "Server Error", error: err.message });
+      }
+    });
+
+    app.patch("/contests/:id/:email/winner", verifyFBToken, async (req, res) => {
+      const { id, email } = req.params;
+      try {
+        const result = await allContests.updateOne(
+          {_id: new ObjectId(id), "submissionsTask.participant.email": email,},
+          { $set: { "submissionsTask.$.isWinner": true } }
+        );
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({success: false,message: error.message});
+      }
+    });
+    
 
 
     await client.db("admin").command({ ping: 1 });
