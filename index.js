@@ -44,6 +44,7 @@ async function run() {
 
     const contestHubDB = client.db('contestHubDB');
     const usersCollection = contestHubDB.collection('users');
+    const allContests = contestHubDB.collection('contests')
 
     app.post('/users', verifyFBToken, async (req, res) => {
       try {
@@ -73,6 +74,34 @@ async function run() {
       }
     });
 
+    app.get('/users/role/:email', verifyFBToken, async (req, res) => {
+      const email = req.params.email;
+
+      if (email !== req.userEmail) {
+        return res.status(403).send({ message: "Forbidden Access" });
+      }
+
+      const user = await usersCollection.findOne({ email });
+      res.send({ role: user?.role });
+    });
+
+    app.post("/contests/:email/:role", verifyFBToken, async (req, res) => {
+      try {
+        const contest = req.body;
+        const { email, role } = req.params;
+        if (role !== 'creator') {
+          return res.status(403).send({ message: "Forbidden Access: Invalid role" });
+        }
+        if (email !== req.userEmail) {
+          return res.status(403).send({ message: "Forbidden Access" });
+        }
+        const result = await allContests.insertOne(contest);
+        res.json({ success: true, id: result.insertedId });
+      } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, message: err.message });
+      }
+    });
 
 
     await client.db("admin").command({ ping: 1 });
