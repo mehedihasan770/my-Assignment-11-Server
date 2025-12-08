@@ -125,6 +125,26 @@ async function run() {
       }
     });
 
+    app.get('/contest/pending', async(req, res) => {
+      try{
+        const result = await allContests.find({ status: "pending" }).toArray();
+        res.send(result)
+      } catch(err) {
+        res.status(500).send({ success: false, message: 'Server error' })
+      }
+    })
+
+    app.patch('/contest/:id/admin',verifyFBToken, async (req, res) => {
+      const { id } = req.params;
+      const { status } = req.body;
+      try {
+        const result = await allContests.updateOne({_id: new ObjectId(id)},{ $set: {status} });
+        res.send(result);
+      } catch (err) {
+        res.status(500).send({ success: false, message: 'Server error' });
+      }
+    });
+
     app.get("/contests/:email/creator", verifyFBToken, async (req, res) => {
       try {
         const creatorEmail = req.params.email;
@@ -144,6 +164,7 @@ async function run() {
       }
     });
 
+    
     app.get("/contests/:id/task", verifyFBToken, async (req, res) => {
       try {
         const id = req.params.id;
