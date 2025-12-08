@@ -74,15 +74,37 @@ async function run() {
       }
     });
 
+    app.get('/users', verifyFBToken, async (req, res) => {
+        try{
+          const result = await usersCollection.find().toArray();
+          res.send(result)
+        } catch(err) {
+          res.status(500).send({ success: false, message: 'Server error' })
+        }
+    });
+
+    app.patch('/users/:id',verifyFBToken, async (req, res) => {
+      const { id } = req.params;
+      const { role } = req.body;
+      try {
+        const result = await usersCollection.updateOne({_id: new ObjectId(id)},{ $set: {role} });
+        res.send(result);
+      } catch (err) {
+        res.status(500).send({ success: false, message: 'Server error' });
+      }
+    });
+
     app.get('/users/role/:email', verifyFBToken, async (req, res) => {
       const email = req.params.email;
-
-      if (email !== req.userEmail) {
-        return res.status(403).send({ message: "Forbidden Access" });
+      try {
+        if (email !== req.userEmail) {
+          return res.status(403).send({ message: "Forbidden Access" });
+        }
+        const user = await usersCollection.findOne({ email });
+        res.send({ role: user?.role });
+      } catch (err) {
+        res.status(500).send({ success: false, message: err.message });
       }
-
-      const user = await usersCollection.findOne({ email });
-      res.send({ role: user?.role });
     });
 
     app.post("/contests/:email/:role", verifyFBToken, async (req, res) => {
@@ -168,6 +190,8 @@ async function run() {
         res.status(500).send({ success: false, message: 'Server error' });
       }
     });
+
+    
 
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
