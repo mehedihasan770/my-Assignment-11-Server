@@ -159,7 +159,15 @@ async function run() {
       }
     });
     
-
+    app.delete('/contests/:id/delete', verifyFBToken, async (req, res) => {
+      const { id } = req.params;
+      try {
+        const result = await allContests.deleteOne({ _id: new ObjectId(id)});
+        res.send(result);
+      } catch (err) {
+        res.status(500).send({ success: false, message: 'Server error' });
+      }
+    });
 
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
