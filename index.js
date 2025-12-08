@@ -146,6 +146,18 @@ async function run() {
         res.status(500).send({success: false,message: error.message});
       }
     });
+
+    app.patch('/contests/:id/contest',verifyFBToken, async (req, res) => {
+      const { id } = req.params;
+      const updateData = req.body;
+      console.log('hallo')
+      try {
+        const result = await allContests.updateOne({_id: new ObjectId(id)},{ $set: updateData });
+        res.send(result);
+      } catch (err) {
+        res.status(500).send({ success: false, message: 'Server error' });
+      }
+    });
     
 
 
