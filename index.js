@@ -1,10 +1,11 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors')
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const admin = require("firebase-admin");
 const serviceAccount = require("./firebaseKey.json");
 const app = express();
-require('dotenv').config();
+const stripe = require('stripe')(process.env.STRIPE_KEY)
 const port = process.env.PORT || 3000;
 
 app.use(cors());
@@ -45,6 +46,7 @@ async function run() {
     const contestHubDB = client.db('contestHubDB');
     const usersCollection = contestHubDB.collection('users');
     const allContests = contestHubDB.collection('contests')
+    const allPayment = contestHubDB.collection('payment')
 
     app.post('/users', verifyFBToken, async (req, res) => {
       try {
@@ -223,7 +225,61 @@ async function run() {
       }
     });
 
-    
+    app.post('/create-checkout-session', async (req, res) => {
+      const paymentInfo = req.body;
+      console.log(paymentInfo)
+      const session = await stripe.checkout.sessions.create({
+        line_items: [
+          {
+            price_data: {
+              currency: 'usd',
+              product_data : {
+                name : paymentInfo.name,
+              },
+              unit_amount: paymentInfo?.price * 100,
+            },
+            quantity: 1,
+          },
+        ],
+        customer_email: paymentInfo.participant.email,
+        mode: 'payment',
+        metadata: {
+          contestId : paymentInfo?.contestId,
+          participantEmail: paymentInfo?.participant?.email,
+          participantImg: paymentInfo?.participant?.image,
+          participantName: paymentInfo?.participant?.name,
+          creator_email: paymentInfo?.creator_email,
+          contest_name: paymentInfo?.name,
+          contest_price: paymentInfo?.price,
+          contest_deadline: paymentInfo?.deadline,
+        },
+        success_url: `${process.env.CLIENT_URL}/all-contests?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${process.env.CLIENT_URL}/contest-details/${paymentInfo.contestId}`,
+      })
+      res.send({url: session.url})
+    })
+
+    app.post('/payment-success', async (req, res) => {
+      const { sessionId } = req.body;
+      const session = await stripe.checkout.sessions.retrieve(sessionId)
+      const payment = await allPayment.findOne({transactionId : session.payment_intent})
+      if(session.status === 'complete' && !payment){
+        const paymentInfo = {
+          contestId : session.metadata.contestId,
+          transactionId : session.payment_intent,
+          creator_email : session.metadata.creator_email,
+          participantEmail: session.metadata.participantEmail,
+          participantImg: session.metadata.participantImg,
+          contest_name: session.metadata.contest_name,
+          contest_price: session.metadata.contest_price,
+          contest_deadline: session.metadata.contest_deadline,
+        }
+        const result = await allPayment.insertOne(paymentInfo);
+        await allContests.updateOne({_id: new ObjectId(session.metadata.contestId)}, {$inc: {participantsCount : 1}})
+        res.send(result);
+        return;
+      }
+    })
 
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
