@@ -125,6 +125,17 @@ async function run() {
       }
     });
 
+    app.get("/admin/approved/contests", async (req, res) => {
+      try {
+        const result = await allContests.find({ status: "confirmed" }).toArray();
+        res.send(result);
+      } catch (error) {
+        console.log(error);
+        res.status(500).send({ success: false, message: 'Server error' });
+      }
+    });
+
+
     app.get('/contest/pending', async(req, res) => {
       try{
         const result = await allContests.find({ status: "pending" }).toArray();
