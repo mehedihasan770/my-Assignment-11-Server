@@ -261,6 +261,7 @@ async function run() {
           creator_email: paymentInfo?.creator_email,
           contest_name: paymentInfo?.name,
           contest_price: paymentInfo?.price,
+          contest_prizeMoney: paymentInfo?.prizeMoney,
           contest_deadline: paymentInfo?.deadline,
         },
         success_url: `${process.env.CLIENT_URL}/all-contests?session_id={CHECKOUT_SESSION_ID}`,
@@ -282,6 +283,7 @@ async function run() {
           participantImg: session.metadata.participantImg,
           contest_name: session.metadata.contest_name,
           contest_price: session.metadata.contest_price,
+          contest_prizeMoney: session.metadata.contest_prizeMoney,
           contest_deadline: session.metadata.contest_deadline,
         }
         const result = await allPayment.insertOne(paymentInfo);
@@ -308,6 +310,16 @@ async function run() {
       console.log('hallo', id, taskData)
       try {
         const result = await allContests.updateOne({_id: new ObjectId(id)}, { $push: { submissionsTask: taskData } })
+        res.send(result)
+      } catch(err) {
+        res.status(500).send({ success: false, message: 'Server error' });
+      }
+    })
+
+    app.get('/Participated/:email/user', verifyFBToken, async(req, res) => {
+      const { email } = req.params;
+      try{
+        const result = await allPayment.find({participantEmail : email}).sort({ deadline: 1 }).toArray();
         res.send(result)
       } catch(err) {
         res.status(500).send({ success: false, message: 'Server error' });
