@@ -326,6 +326,27 @@ async function run() {
       }
     })
 
+    app.get('/winning/:email/user', verifyFBToken, async(req, res) => {
+      const { email } = req.params;
+      try{
+        const result = await allContests.find({ 'submissionsTask.participant.email': email, "submissionsTask.isWinner" : true}).toArray();
+        res.send(result)
+      } catch(err) {
+        res.status(500).send({ success: false, message: 'Server error' });
+      }
+    })
+
+    app.patch('/user/:email/edit', verifyFBToken, async (req, res) => {
+      const { email } = req.params;
+      const userInfo = req.body;
+      try {
+        const result = await usersCollection.updateOne( { email: email }, {$set: {name: userInfo?.name, image: userInfo?.image, updatedAt: new Date()}} )
+        res.send(result)
+      } catch (error) {
+        res.status(500).send({success: false,message: "Server error"});
+      }
+    });
+
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {}
