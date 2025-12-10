@@ -192,11 +192,21 @@ async function run() {
 
     app.patch("/contests/:id/:email/winner", verifyFBToken, async (req, res) => {
       const { id, email } = req.params;
+      const winnerData = req.body;
+      console.log(id, email, winnerData)
       try {
         const result = await allContests.updateOne(
           {_id: new ObjectId(id), "submissionsTask.participant.email": email,},
-          { $set: { "submissionsTask.$.isWinner": true } }
+          { $set: { "submissionsTask.$.isWinner": true,
+             winnerDetails: {
+              name: winnerData.name,
+              email: winnerData.email,
+              photo: winnerData.photo,
+              declaredAt: new Date()
+          }
+           } }
         );
+        await usersCollection.updateOne({email : email}, {$inc : {wins: 1}})
         res.send(result);
       } catch (error) {
         res.status(500).send({success: false,message: error.message});
@@ -278,6 +288,29 @@ async function run() {
         await allContests.updateOne({_id: new ObjectId(session.metadata.contestId)}, {$inc: {participantsCount : 1}})
         res.send(result);
         return;
+      }
+    })
+
+    app.get('/contest/:id/paid', async (req, res) => {
+      const {id} = req.params;
+      const email = req.query.email;
+      try {
+        const result = await allPayment.findOne({contestId : id, participantEmail : email})
+        res.send(result)
+      } catch(err) {
+        res.status(500).send({ success: false, message: 'Server error' });
+      }
+    })
+
+    app.post('/contest/:id/task', async (req, res) => {
+      const {id} = req.params;
+      const taskData = req.body;
+      console.log('hallo', id, taskData)
+      try {
+        const result = await allContests.updateOne({_id: new ObjectId(id)}, { $push: { submissionsTask: taskData } })
+        res.send(result)
+      } catch(err) {
+        res.status(500).send({ success: false, message: 'Server error' });
       }
     })
 
